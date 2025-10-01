@@ -1,7 +1,7 @@
 {
-  "name": "class",
+  "name": "prime",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "start": "nodemon",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
