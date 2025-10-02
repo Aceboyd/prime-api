@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import UserModel, { UserDocument } from "../models/user";
-import jwt from "jsonwebtoken";
+import jwt, { Secret, SignOptions } from "jsonwebtoken";
 import { CustomRequest } from "../middleware/authMiddleware";
 
 // 🛠️ Environment variable for JWT secret
@@ -41,8 +41,8 @@ export const registerUser = async (req: Request, res: Response) => {
     // Generate JWT
     const token = jwt.sign(
       { id: String(user._id), role: user.role },
-      JWT_SECRET as jwt.Secret,
-      { expiresIn: (process.env.JWT_EXPIRES_IN as string) || "1d" }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
 
 
@@ -82,10 +82,9 @@ export const loginUser = async (req: Request, res: Response) => {
     // Generate JWT
     const token = jwt.sign(
       { id: String(user._id), role: user.role },
-      JWT_SECRET as jwt.Secret,
-      { expiresIn: (process.env.JWT_EXPIRES_IN as string) || "1d" }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
-
 
     res.status(200).json({
       message: "Login successful",
