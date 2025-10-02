@@ -3,10 +3,13 @@ import UserModel, { UserDocument } from "../models/user";
 import jwt from "jsonwebtoken";
 import { CustomRequest } from "../middleware/authMiddleware";
 
-//  Environment variable for JWT secret
-const JWT_SECRET: jwt.Secret = process.env.JWT_SECRET || "mysecretkey123";
+// 🛠️ Environment variable for JWT secret
+const JWT_SECRET: string = process.env.JWT_SECRET || "mysecretkey123";
 
-//  Register a new user
+// 🛠️ Default token expiration
+const JWT_EXPIRES_IN: string | number = process.env.JWT_EXPIRES_IN || "1d";
+
+// 📝 Register a new user
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { first_name, last_name, email, password, confirmPassword, country, phone, role } = req.body;
@@ -37,10 +40,11 @@ export const registerUser = async (req: Request, res: Response) => {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+      { id: String(user._id), role: user.role },
+      JWT_SECRET as jwt.Secret,
+      { expiresIn: (process.env.JWT_EXPIRES_IN as string) || "1d" }
     );
+
 
     res.status(201).json({
       message: "User registered successfully",
@@ -58,7 +62,7 @@ export const registerUser = async (req: Request, res: Response) => {
   }
 };
 
-//  Login user
+// 🔐 Login user
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -77,10 +81,11 @@ export const loginUser = async (req: Request, res: Response) => {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+      { id: String(user._id), role: user.role },
+      JWT_SECRET as jwt.Secret,
+      { expiresIn: (process.env.JWT_EXPIRES_IN as string) || "1d" }
     );
+
 
     res.status(200).json({
       message: "Login successful",
@@ -98,7 +103,7 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-//  Get user profile (authenticated user)
+// 👤 Get user profile (authenticated user)
 export const getUserProfile = async (req: CustomRequest, res: Response) => {
   try {
     const user = await UserModel.findById(req.user?.id).select("-password");
@@ -112,10 +117,9 @@ export const getUserProfile = async (req: CustomRequest, res: Response) => {
   }
 };
 
-//  Get all users (admin only)
+// 📋 Get all users (admin only)
 export const getAllUsers = async (req: CustomRequest, res: Response) => {
   try {
-    // Check if user is admin
     if (req.user?.role !== "admin") {
       return res.status(403).json({ message: "Access denied. Admin only." });
     }
@@ -127,12 +131,11 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
   }
 };
 
-//  Get single user by ID (admin or self)
+// 👤 Get single user by ID (admin or self)
 export const getSingleUser = async (req: CustomRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is admin or requesting their own data
     if (req.user?.role !== "admin" && req.user?.id !== id) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -148,18 +151,16 @@ export const getSingleUser = async (req: CustomRequest, res: Response) => {
   }
 };
 
-//  Update user data
+// ✏️ Update user data
 export const updateUser = async (req: CustomRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { first_name, last_name, email, country, phone, password, confirmPassword } = req.body;
 
-    // Validate confirmPassword if password is provided
     if (password && password !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
 
-    // Check if user is admin or updating their own data
     if (req.user?.role !== "admin" && req.user?.id !== id) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -172,7 +173,6 @@ export const updateUser = async (req: CustomRequest, res: Response) => {
       phone,
     };
 
-    // Only include password if provided (hashing handled by schema pre-save hook)
     if (password) {
       updateData.password = password;
     }
@@ -183,7 +183,7 @@ export const updateUser = async (req: CustomRequest, res: Response) => {
     }).select("-password");
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(400).json({ message: "User not found" });
     }
 
     res.status(200).json({
@@ -195,12 +195,11 @@ export const updateUser = async (req: CustomRequest, res: Response) => {
   }
 };
 
-//  Delete user
+// 🗑️ Delete user
 export const deleteUser = async (req: CustomRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Check if user is admin or deleting their own account
     if (req.user?.role !== "admin" && req.user?.id !== id) {
       return res.status(403).json({ message: "Access denied" });
     }
