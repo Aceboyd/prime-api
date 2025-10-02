@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 
-// 🛠️ Extend Request interface for TypeScript
+// 🛠️ Extend Request interface
 export interface CustomRequest extends Request {
   user?: { id: string; email: string; role: string };
 }
@@ -9,17 +9,30 @@ export interface CustomRequest extends Request {
 const JWT_SECRET = process.env.JWT_SECRET || "mysecretkey123";
 
 // 🔒 Authentication middleware
-export const authMiddleware = async (req: CustomRequest, res: Response, next: NextFunction) => {
+export const authMiddleware = (
+  req: CustomRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
-    if (!token) {
+    const authHeader = req.header("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ message: "No token provided" });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
-    req.user = decoded;
+    const token = authHeader.split(" ")[1]; // safer extraction
+    const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload & {
+      id: string;
+      email: string;
+      role: string;
+    };
+
+    req.user = { id: decoded.id, email: decoded.email, role: decoded.role };
     next();
   } catch (error) {
-    res.status(401).json({ message: "Invalid token", error: (error as Error).message });
+    return res.status(401).json({
+      message: "Invalid or expired token",
+      error: (error as Error).message,
+    });
   }
 };
