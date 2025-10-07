@@ -44,7 +44,7 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ["./routes/*.ts"], // Path to files with JSDoc comments
+  apis: ["./dist/routes/*.js"], // Path to files with JSDoc comments
 };
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
