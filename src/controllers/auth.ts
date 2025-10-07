@@ -16,13 +16,13 @@ export const registerUser = async (req: Request, res: Response) => {
 
     // Validate confirmPassword
     if (password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
+      return res.status(400).json({ success: false, message: "Passwords do not match" });
     }
 
     // Check if user already exists
     const existingUser = await UserModel.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Email already in use" });
+      return res.status(400).json({ success: false, message: "Email already in use" });
     }
 
     // Create new user (password hashing handled by schema pre-save hook)
@@ -33,32 +33,39 @@ export const registerUser = async (req: Request, res: Response) => {
       password,
       country,
       phone,
-      role,
+      role: role || "user", // Default to 'user' if role not provided
     });
 
     await user.save();
 
     // Generate JWT
     const token = jwt.sign(
-      { id: String(user._id), role: user.role },
+      { id: String(user._id), email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
 
-
     res.status(201).json({
+      success: true,
       message: "User registered successfully",
-      user: {
+      data: {
         id: user._id,
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
+        country: user.country,
+        phone: user.phone,
         role: user.role,
+        total_balance: user.total_balance,
+        total_deposit: user.total_deposit,
+        total_profit: user.total_profit,
+        kyc_status: user.kyc_status,
+        selected_trader: user.selected_trader,
       },
       token,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: (error as Error).message });
+    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
   }
 };
 
@@ -70,49 +77,73 @@ export const loginUser = async (req: Request, res: Response) => {
     // Find user
     const user = await UserModel.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
     // Generate JWT
     const token = jwt.sign(
-      { id: String(user._id), role: user.role },
+      { id: String(user._id), email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN } as SignOptions
     );
 
     res.status(200).json({
+      success: true,
       message: "Login successful",
-      user: {
+      data: {
         id: user._id,
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
+        country: user.country,
+        phone: user.phone,
         role: user.role,
+        total_balance: user.total_balance,
+        total_deposit: user.total_deposit,
+        total_profit: user.total_profit,
+        kyc_status: user.kyc_status,
+        selected_trader: user.selected_trader,
       },
       token,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: (error as Error).message });
+    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
   }
 };
 
 // 👤 Get user profile (authenticated user)
 export const getUserProfile = async (req: CustomRequest, res: Response) => {
   try {
-    const user = await UserModel.findById(req.user?.id).select("-password");
+    const user = await UserModel.findById(req.user?.id).select("-password").populate("selected_trader", "name");
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json({ user });
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        country: user.country,
+        phone: user.phone,
+        role: user.role,
+        total_balance: user.total_balance,
+        total_deposit: user.total_deposit,
+        total_profit: user.total_profit,
+        kyc_status: user.kyc_status,
+        selected_trader: user.selected_trader,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: (error as Error).message });
+    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
   }
 };
 
@@ -120,13 +151,29 @@ export const getUserProfile = async (req: CustomRequest, res: Response) => {
 export const getAllUsers = async (req: CustomRequest, res: Response) => {
   try {
     if (req.user?.role !== "admin") {
-      return res.status(403).json({ message: "Access denied. Admin only." });
+      return res.status(403).json({ success: false, message: "Access denied. Admin only." });
     }
 
-    const users = await UserModel.find().select("-password");
-    res.status(200).json({ users });
+    const users = await UserModel.find().select("-password").populate("selected_trader", "name");
+    res.status(200).json({
+      success: true,
+      data: users.map((user) => ({
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        country: user.country,
+        phone: user.phone,
+        role: user.role,
+        total_balance: user.total_balance,
+        total_deposit: user.total_deposit,
+        total_profit: user.total_profit,
+        kyc_status: user.kyc_status,
+        selected_trader: user.selected_trader,
+      })),
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: (error as Error).message });
+    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
   }
 };
 
@@ -136,17 +183,33 @@ export const getSingleUser = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
 
     if (req.user?.role !== "admin" && req.user?.id !== id) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ success: false, message: "Access denied" });
     }
 
-    const user = await UserModel.findById(id).select("-password");
+    const user = await UserModel.findById(id).select("-password").populate("selected_trader", "name");
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json({ user });
+    res.status(200).json({
+      success: true,
+      data: {
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        country: user.country,
+        phone: user.phone,
+        role: user.role,
+        total_balance: user.total_balance,
+        total_deposit: user.total_deposit,
+        total_profit: user.total_profit,
+        kyc_status: user.kyc_status,
+        selected_trader: user.selected_trader,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: (error as Error).message });
+    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
   }
 };
 
@@ -157,11 +220,11 @@ export const updateUser = async (req: CustomRequest, res: Response) => {
     const { first_name, last_name, email, country, phone, password, confirmPassword } = req.body;
 
     if (password && password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
+      return res.status(400).json({ success: false, message: "Passwords do not match" });
     }
 
     if (req.user?.role !== "admin" && req.user?.id !== id) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ success: false, message: "Access denied" });
     }
 
     const updateData: Partial<UserDocument> = {
@@ -179,18 +242,32 @@ export const updateUser = async (req: CustomRequest, res: Response) => {
     const user = await UserModel.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    }).select("-password");
+    }).select("-password").populate("selected_trader", "name");
 
     if (!user) {
-      return res.status(400).json({ message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     res.status(200).json({
+      success: true,
       message: "User updated successfully",
-      user,
+      data: {
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        country: user.country,
+        phone: user.phone,
+        role: user.role,
+        total_balance: user.total_balance,
+        total_deposit: user.total_deposit,
+        total_profit: user.total_profit,
+        kyc_status: user.kyc_status,
+        selected_trader: user.selected_trader,
+      },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: (error as Error).message });
+    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
   }
 };
 
@@ -200,16 +277,16 @@ export const deleteUser = async (req: CustomRequest, res: Response) => {
     const { id } = req.params;
 
     if (req.user?.role !== "admin" && req.user?.id !== id) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ success: false, message: "Access denied" });
     }
 
     const user = await UserModel.findByIdAndDelete(id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json({ message: "User deleted successfully" });
+    res.status(200).json({ success: true, message: "User deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: (error as Error).message });
+    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
   }
 };

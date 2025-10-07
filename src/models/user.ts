@@ -9,6 +9,11 @@ export interface UserDocument extends Document {
   country: string;
   phone: string;
   role: "user" | "admin";
+  total_balance: number;
+  total_deposit: number;
+  total_profit: number;
+  kyc_status: "pending" | "approved" | "rejected";
+  selected_trader: Schema.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 
@@ -24,6 +29,11 @@ const userSchema = new Schema<UserDocument>(
     country: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
     role: { type: String, enum: ["user", "admin"], default: "user" },
+    total_balance: { type: Number, default: 0 },
+    total_deposit: { type: Number, default: 0 },
+    total_profit: { type: Number, default: 0 },
+    kyc_status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+    selected_trader: { type: Schema.Types.ObjectId, ref: "Trader", default: null },
   },
   { timestamps: true }
 );
