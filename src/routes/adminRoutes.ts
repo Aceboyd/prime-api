@@ -19,7 +19,7 @@ const adminMiddleware = async (req: AuthenticatedRequest, res: Response, next: N
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
     next();
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
@@ -73,7 +73,7 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
   try {
     const users = await User.find().select("-password");
     res.json({ success: true, data: users });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -156,7 +156,7 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
     ).select("-password");
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.json({ success: true, data: user });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -267,7 +267,7 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
         date: transaction.date,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -343,7 +343,7 @@ router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (re
         date: t.date,
       })),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -406,7 +406,7 @@ router.post("/traders", authMiddleware, adminMiddleware, async (req: Authenticat
     const trader = new Trader(req.body);
     await trader.save();
     res.json({ success: true, data: trader });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -452,7 +452,7 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
   try {
     const traders = await Trader.find();
     res.json({ success: true, data: traders });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -513,7 +513,7 @@ router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (r
     const user = await User.findByIdAndUpdate(req.params.id, { selected_trader: traderId }, { new: true }).select("-password");
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.json({ success: true, data: user });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -590,7 +590,7 @@ router.post("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Au
         address: walletAddress.address,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -644,7 +644,7 @@ router.get("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Aut
         address: a.address,
       })),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
