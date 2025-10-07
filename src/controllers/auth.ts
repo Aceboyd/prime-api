@@ -117,6 +117,62 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
+
+// 🔐 Admin Login (separate endpoint)
+export const loginAdmin = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
+    }
+
+    // Check role
+    if (user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied. Admins only." });
+    }
+
+    // Check password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { id: String(user._id), email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN } as SignOptions
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Admin login successful",
+      data: {
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        country: user.country,
+        phone: user.phone,
+        role: user.role,
+        total_balance: user.total_balance,
+        total_deposit: user.total_deposit,
+        total_profit: user.total_profit,
+        kyc_status: user.kyc_status,
+        selected_trader: user.selected_trader,
+      },
+      token,
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
+
 // 👤 Get user profile (authenticated user)
 export const getUserProfile = async (req: CustomRequest, res: Response) => {
   try {
