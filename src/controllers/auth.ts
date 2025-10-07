@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import UserModel, { UserDocument } from "../models/user";
-import jwt, { Secret, SignOptions } from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { CustomRequest } from "../middleware/authMiddleware";
 
 // 🛠️ Environment variable for JWT secret
@@ -64,8 +64,8 @@ export const registerUser = async (req: Request, res: Response) => {
       },
       token,
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -112,8 +112,8 @@ export const loginUser = async (req: Request, res: Response) => {
       },
       token,
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -142,8 +142,8 @@ export const getUserProfile = async (req: CustomRequest, res: Response) => {
         selected_trader: user.selected_trader,
       },
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -172,8 +172,8 @@ export const getAllUsers = async (req: CustomRequest, res: Response) => {
         selected_trader: user.selected_trader,
       })),
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -208,8 +208,8 @@ export const getSingleUser = async (req: CustomRequest, res: Response) => {
         selected_trader: user.selected_trader,
       },
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -266,8 +266,8 @@ export const updateUser = async (req: CustomRequest, res: Response) => {
         selected_trader: user.selected_trader,
       },
     });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -286,7 +286,7 @@ export const deleteUser = async (req: CustomRequest, res: Response) => {
     }
 
     res.status(200).json({ success: true, message: "User deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error", error: (error as Error).message });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

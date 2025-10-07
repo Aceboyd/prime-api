@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { 
   registerUser, 
   loginUser, 
@@ -11,7 +11,7 @@ import {
 import { authMiddleware } from "../middleware/authMiddleware";
 import WalletAddress from "../models/WalletAddress";
 import Transaction from "../models/Transaction";
-import user from "../models/user";
+import User from "../models/user"; // Note: Updated import to 'User' for consistency
 
 const router = Router();
 
@@ -352,11 +352,11 @@ router.delete("/:id", authMiddleware, deleteUser);
  *       500:
  *         description: Server error
  */
-router.get("/wallet-addresses", authMiddleware, async (req, res) => {
+router.get("/wallet-addresses", authMiddleware, async (req: Request, res: Response) => {
   try {
     const addresses = await WalletAddress.find().select("currency network address");
     res.json({ success: true, data: addresses });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -427,7 +427,7 @@ router.get("/wallet-addresses", authMiddleware, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.post("/deposit", authMiddleware, async (req, res) => {
+router.post("/deposit", authMiddleware, async (req: Request, res: Response) => {
   try {
     const { currency, amount } = req.body;
     if (!["BTC", "ETH", "USDT"].includes(currency) || !amount || amount <= 0) {
@@ -467,7 +467,7 @@ router.post("/deposit", authMiddleware, async (req, res) => {
         depositAddress: walletAddress.address,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -520,7 +520,7 @@ router.post("/deposit", authMiddleware, async (req, res) => {
  *       500:
  *         description: Server error
  */
-router.get("/transactions", authMiddleware, async (req, res) => {
+router.get("/transactions", authMiddleware, async (req: Request, res: Response) => {
   try {
     const transactions = await Transaction.find({ user: req.user!.id });
     res.json({
@@ -537,7 +537,7 @@ router.get("/transactions", authMiddleware, async (req, res) => {
         date: t.date,
       })),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
