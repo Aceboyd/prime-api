@@ -56,6 +56,12 @@ const adminMiddleware = async (req: AuthenticatedRequest, res: Response, next: N
  *                         type: string
  *                       email:
  *                         type: string
+ *                       country:
+ *                         type: string
+ *                         nullable: true
+ *                       phone:
+ *                         type: string
+ *                         nullable: true
  *                       total_balance:
  *                         type: number
  *                       total_deposit:
@@ -64,15 +70,85 @@ const adminMiddleware = async (req: AuthenticatedRequest, res: Response, next: N
  *                         type: number
  *                       kyc_status:
  *                         type: string
+ *                       selected_trader:
+ *                         type: string
+ *                         nullable: true
  *       403:
  *         description: Forbidden (not admin)
  *       401:
  *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const users = await User.find().select("-password");
-    res.json({ success: true, data: users });
+    res.json({
+      success: true,
+      data: users.map(user => ({
+        id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        country: user.country,
+        phone: user.phone,
+        total_balance: user.total_balance || 0,
+        total_deposit: user.total_deposit || 0,
+        total_profit: user.total_profit || 0,
+        kyc_status: user.kyc_status || 'pending',
+        selected_trader: user.selected_trader || null
+      }))
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 🗑️ Delete a user (admin only)
+/**
+ * @swagger
+ * /admin/users/{id}:
+ *   delete:
+ *     summary: Delete a user (admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *     responses:
+ *       200:
+ *         description: User deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: User not found
+ *       403:
+ *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    await Transaction.deleteMany({ user: req.params.id });
+    res.json({ success: true, message: "User deleted successfully" });
   } catch (error: unknown) {
     res.status(500).json({ success: false, message: "Server error" });
   }
@@ -93,6 +169,7 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
  *         required: true
  *         schema:
  *           type: string
+ *         description: The user ID
  *     requestBody:
  *       required: true
  *       content:
@@ -112,6 +189,7 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
  *               selected_trader:
  *                 type: string
  *                 nullable: true
+ *             required: [total_balance, total_deposit, total_profit, kyc_status]
  *     responses:
  *       200:
  *         description: User updated
@@ -133,6 +211,12 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
  *                       type: string
  *                     email:
  *                       type: string
+ *                     country:
+ *                       type: string
+ *                       nullable: true
+ *                     phone:
+ *                       type: string
+ *                       nullable: true
  *                     total_balance:
  *                       type: number
  *                     total_deposit:
@@ -141,10 +225,17 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
  *                       type: number
  *                     kyc_status:
  *                       type: string
+ *                     selected_trader:
+ *                       type: string
+ *                       nullable: true
  *       404:
  *         description: User not found
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.put("/users/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -184,6 +275,7 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
  *                 enum: [deposit, withdraw, trade]
  *               asset:
  *                 type: string
+ *                 enum: [BTC, ETH, USDT]
  *               amount:
  *                 type: number
  *               value:
@@ -193,7 +285,7 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
  *               status:
  *                 type: string
  *                 enum: [pending, completed, failed]
- *             required: [userId, type, asset, amount, value, status]
+ *             required: [userId, type, asset, amount, value, fee, status]
  *     responses:
  *       200:
  *         description: Transaction created
@@ -228,8 +320,14 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
  *                       format: date-time
  *       400:
  *         description: Invalid request
+ *       404:
+ *         description: User not found
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.post("/transactions", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -243,7 +341,6 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
     const transaction = new Transaction({ user: userId, type, asset, amount, value, fee, status });
     await transaction.save();
 
-    // Update user balances if transaction is completed
     if (type === "deposit" && status === "completed") {
       await User.findByIdAndUpdate(userId, { $inc: { total_deposit: amount, total_balance: amount } });
     } else if (type === "withdraw" && status === "completed") {
@@ -287,6 +384,7 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
  *         required: true
  *         schema:
  *           type: string
+ *         description: The user ID
  *     responses:
  *       200:
  *         description: List of transactions
@@ -305,7 +403,12 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
  *                       id:
  *                         type: string
  *                       user:
- *                         type: string
+ *                         type: object
+ *                         properties:
+ *                           first_name:
+ *                             type: string
+ *                           last_name:
+ *                             type: string
  *                       type:
  *                         type: string
  *                       asset:
@@ -325,6 +428,10 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
  *         description: User not found
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -400,6 +507,10 @@ router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (re
  *         description: Invalid request
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.post("/traders", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -447,6 +558,10 @@ router.post("/traders", authMiddleware, adminMiddleware, async (req: Authenticat
  *                         type: boolean
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.get("/traders", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -472,6 +587,7 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  *         required: true
  *         schema:
  *           type: string
+ *         description: The user ID
  *     requestBody:
  *       required: true
  *       content:
@@ -481,6 +597,8 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  *             properties:
  *               traderId:
  *                 type: string
+ *                 nullable: true
+ *             required: [traderId]
  *     responses:
  *       200:
  *         description: Trader assigned
@@ -500,12 +618,33 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  *                       type: string
  *                     last_name:
  *                       type: string
+ *                     email:
+ *                       type: string
+ *                     country:
+ *                       type: string
+ *                       nullable: true
+ *                     phone:
+ *                       type: string
+ *                       nullable: true
+ *                     total_balance:
+ *                       type: number
+ *                     total_deposit:
+ *                       type: number
+ *                     total_profit:
+ *                       type: number
+ *                     kyc_status:
+ *                       type: string
  *                     selected_trader:
  *                       type: string
+ *                       nullable: true
  *       404:
  *         description: User not found
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -567,6 +706,8 @@ router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (r
  *         description: Invalid request
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Server error
  */
@@ -629,6 +770,8 @@ router.post("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Au
  *                         type: string
  *       403:
  *         description: Forbidden (not admin)
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Server error
  */
