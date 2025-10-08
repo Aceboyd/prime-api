@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
 import connectDB from "./db/index";
 import authRouter from "./routes/auth";
+import adminRouter from "./routes/adminRoutes"; // Import admin routes
 import cors from "cors";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
@@ -20,8 +21,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// 🛤️ Mount auth routes
+// 🛤️ Mount routes
 app.use("/auth", authRouter);
+app.use("/admin", adminRouter); // Mount admin routes
 
 // 🏠 Health check endpoint
 app.get("/", (req: Request, res: Response) => {
@@ -43,8 +45,17 @@ const swaggerOptions = {
         description: "Production server",
       },
     ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
+    },
   },
-  apis: ["./dist/routes/*.js"], // Path to files with JSDoc comments
+  apis: ["./dist/routes/*.js"], // Adjust if needed for TypeScript
 };
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
