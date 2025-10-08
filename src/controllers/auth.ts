@@ -33,7 +33,7 @@ export const registerUser = async (req: Request, res: Response) => {
       password,
       country,
       phone,
-      role: role || "user", // Default to 'user' if role not provided
+      role: role || "user",
     });
 
     await user.save();
@@ -117,8 +117,7 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-
-// 🔐 Admin Login (separate endpoint)
+// 🔐 Admin Login
 export const loginAdmin = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -171,7 +170,29 @@ export const loginAdmin = async (req: Request, res: Response) => {
   }
 };
 
+// 🔐 Logout user
+export const logoutUser = async (req: CustomRequest, res: Response) => {
+  try {
+    if (req.user?.role !== "user") {
+      return res.status(403).json({ success: false, message: "Access denied. Users only." });
+    }
+    res.json({ success: true, message: "User logged out successfully" });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
+// 🔐 Logout admin
+export const logoutAdmin = async (req: CustomRequest, res: Response) => {
+  try {
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied. Admins only." });
+    }
+    res.json({ success: true, message: "Admin logged out successfully" });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
 // 👤 Get user profile (authenticated user)
 export const getUserProfile = async (req: CustomRequest, res: Response) => {

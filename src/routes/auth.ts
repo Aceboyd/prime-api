@@ -8,6 +8,8 @@ import {
   getSingleUser,
   updateUser,
   deleteUser,
+  logoutUser,
+  logoutAdmin,
 } from "../controllers/auth";
 import { authMiddleware } from "../middleware/authMiddleware";
 import WalletAddress from "../models/WalletAddress";
@@ -38,13 +40,30 @@ const router = Router();
  *               password:
  *                 type: string
  *                 example: SecurePass123!
- *               name:
+ *               first_name:
  *                 type: string
- *                 example: John Doe
+ *                 example: John
+ *               last_name:
+ *                 type: string
+ *                 example: Doe
+ *               country:
+ *                 type: string
+ *                 example: USA
+ *               phone:
+ *                 type: string
+ *                 example: +1234567890
+ *               role:
+ *                 type: string
+ *                 example: user
+ *               confirmPassword:
+ *                 type: string
+ *                 example: SecurePass123!
  *             required:
  *               - email
  *               - password
- *               - name
+ *               - first_name
+ *               - last_name
+ *               - confirmPassword
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -56,15 +75,38 @@ const router = Router();
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: User registered successfully
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
+ *                     first_name:
+ *                       type: string
+ *                     last_name:
+ *                       type: string
  *                     email:
  *                       type: string
- *                     name:
+ *                     country:
  *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     total_balance:
+ *                       type: number
+ *                     total_deposit:
+ *                       type: number
+ *                     total_profit:
+ *                       type: number
+ *                     kyc_status:
+ *                       type: string
+ *                     selected_trader:
+ *                       type: string
+ *                 token:
+ *                   type: string
  *       400:
  *         description: Invalid input or user already exists
  */
@@ -103,21 +145,39 @@ router.post("/register", registerUser);
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
  *                 data:
  *                   type: object
  *                   properties:
- *                     token:
+ *                     id:
  *                       type: string
- *                     user:
- *                       type: object
- *                       properties:
- *                         id:
- *                           type: string
- *                         email:
- *                           type: string
- *                         name:
- *                           type: string
- *       401:
+ *                     first_name:
+ *                       type: string
+ *                     last_name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     country:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     total_balance:
+ *                       type: number
+ *                     total_deposit:
+ *                       type: number
+ *                     total_profit:
+ *                       type: number
+ *                     kyc_status:
+ *                       type: string
+ *                     selected_trader:
+ *                       type: string
+ *                 token:
+ *                   type: string
+ *       400:
  *         description: Invalid credentials
  */
 router.post("/login", loginUser);
@@ -155,23 +215,42 @@ router.post("/login", loginUser);
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Admin login successful
  *                 data:
  *                   type: object
  *                   properties:
- *                     token:
+ *                     id:
  *                       type: string
- *                     user:
- *                       type: object
- *                       properties:
- *                         id:
- *                           type: string
- *                         email:
- *                           type: string
- *                         role:
- *                           type: string
- *                           example: admin
- *       401:
- *         description: Invalid credentials or not an admin
+ *                     first_name:
+ *                       type: string
+ *                     last_name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     country:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     total_balance:
+ *                       type: number
+ *                     total_deposit:
+ *                       type: number
+ *                     total_profit:
+ *                       type: number
+ *                     kyc_status:
+ *                       type: string
+ *                     selected_trader:
+ *                       type: string
+ *                 token:
+ *                   type: string
+ *       400:
+ *         description: Invalid credentials
+ *       403:
+ *         description: Access denied. Admins only.
  */
 router.post("/admin/login", loginAdmin);
 
@@ -179,14 +258,14 @@ router.post("/admin/login", loginAdmin);
  * @swagger
  * /auth/logout:
  *   post:
- *     summary: Log out user or admin
- *     description: Logs out the authenticated user or admin, instructing the client to clear the JWT token from storage. Requires authentication.
+ *     summary: Log out user
+ *     description: Logs out the authenticated user, instructing the client to clear the JWT token from storage. Requires user authentication.
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Logged out successfully
+ *         description: User logged out successfully
  *         content:
  *           application/json:
  *             schema:
@@ -197,7 +276,7 @@ router.post("/admin/login", loginAdmin);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: Logged out successfully
+ *                   example: User logged out successfully
  *       401:
  *         description: Unauthorized, token required
  *         content:
@@ -211,6 +290,19 @@ router.post("/admin/login", loginAdmin);
  *                 message:
  *                   type: string
  *                   example: Invalid token
+ *       403:
+ *         description: Access denied. Users only.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Access denied. Users only.
  *       500:
  *         description: Server error
  *         content:
@@ -225,14 +317,72 @@ router.post("/admin/login", loginAdmin);
  *                   type: string
  *                   example: Server error
  */
-router.post("/logout", authMiddleware, async (req: Request, res: Response) => {
-  try {
-    // JWT is stateless; client should clear token from storage
-    res.json({ success: true, message: "Logged out successfully" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
+router.post("/logout", authMiddleware, logoutUser);
+
+/**
+ * @swagger
+ * /auth/admin/logout:
+ *   post:
+ *     summary: Log out admin
+ *     description: Logs out the authenticated admin, instructing the client to clear the JWT token from storage. Requires admin authentication.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Admin logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Admin logged out successfully
+ *       401:
+ *         description: Unauthorized, token required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Invalid token
+ *       403:
+ *         description: Access denied. Admins only.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Access denied. Admins only.
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Server error
+ */
+router.post("/admin/logout", authMiddleware, logoutAdmin);
 
 /**
  * @swagger
@@ -258,12 +408,32 @@ router.post("/logout", authMiddleware, async (req: Request, res: Response) => {
  *                   properties:
  *                     id:
  *                       type: string
+ *                     first_name:
+ *                       type: string
+ *                     last_name:
+ *                       type: string
  *                     email:
  *                       type: string
- *                     name:
+ *                     country:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     total_balance:
+ *                       type: number
+ *                     total_deposit:
+ *                       type: number
+ *                     total_profit:
+ *                       type: number
+ *                     kyc_status:
+ *                       type: string
+ *                     selected_trader:
  *                       type: string
  *       401:
  *         description: Unauthorized, token required
+ *       404:
+ *         description: User not found
  */
 router.get("/profile", authMiddleware, getUserProfile);
 
@@ -293,12 +463,32 @@ router.get("/profile", authMiddleware, getUserProfile);
  *                     properties:
  *                       id:
  *                         type: string
+ *                       first_name:
+ *                         type: string
+ *                       last_name:
+ *                         type: string
  *                       email:
  *                         type: string
- *                       name:
+ *                       country:
+ *                         type: string
+ *                       phone:
+ *                         type: string
+ *                       role:
+ *                         type: string
+ *                       total_balance:
+ *                         type: number
+ *                       total_deposit:
+ *                         type: number
+ *                       total_profit:
+ *                         type: number
+ *                       kyc_status:
+ *                         type: string
+ *                       selected_trader:
  *                         type: string
  *       401:
  *         description: Unauthorized, admin access required
+ *       403:
+ *         description: Access denied. Admin only.
  */
 router.get("/", authMiddleware, getAllUsers);
 
@@ -333,12 +523,32 @@ router.get("/", authMiddleware, getAllUsers);
  *                   properties:
  *                     id:
  *                       type: string
+ *                     first_name:
+ *                       type: string
+ *                     last_name:
+ *                       type: string
  *                     email:
  *                       type: string
- *                     name:
+ *                     country:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     total_balance:
+ *                       type: number
+ *                     total_deposit:
+ *                       type: number
+ *                     total_profit:
+ *                       type: number
+ *                     kyc_status:
+ *                       type: string
+ *                     selected_trader:
  *                       type: string
  *       401:
  *         description: Unauthorized, token required
+ *       403:
+ *         description: Access denied
  *       404:
  *         description: User not found
  */
@@ -366,13 +576,25 @@ router.get("/:id", authMiddleware, getSingleUser);
  *           schema:
  *             type: object
  *             properties:
+ *               first_name:
+ *                 type: string
+ *                 example: Updated First
+ *               last_name:
+ *                 type: string
+ *                 example: Updated Last
  *               email:
  *                 type: string
  *                 example: newemail@example.com
- *               name:
+ *               country:
  *                 type: string
- *                 example: Updated Name
+ *                 example: Canada
+ *               phone:
+ *                 type: string
+ *                 example: +0987654321
  *               password:
+ *                 type: string
+ *                 example: NewPass123!
+ *               confirmPassword:
  *                 type: string
  *                 example: NewPass123!
  *     responses:
@@ -386,17 +608,42 @@ router.get("/:id", authMiddleware, getSingleUser);
  *                 success:
  *                   type: boolean
  *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: User updated successfully
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
+ *                     first_name:
+ *                       type: string
+ *                     last_name:
+ *                       type: string
  *                     email:
  *                       type: string
- *                     name:
+ *                     country:
  *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     total_balance:
+ *                       type: number
+ *                     total_deposit:
+ *                       type: number
+ *                     total_profit:
+ *                       type: number
+ *                     kyc_status:
+ *                       type: string
+ *                     selected_trader:
+ *                       type: string
+ *       400:
+ *         description: Passwords do not match
  *       401:
  *         description: Unauthorized, token required
+ *       403:
+ *         description: Access denied
  *       404:
  *         description: User not found
  */
@@ -430,9 +677,11 @@ router.put("/:id", authMiddleware, updateUser);
  *                   example: true
  *                 message:
  *                   type: string
- *                   example: User deleted
+ *                   example: User deleted successfully
  *       401:
  *         description: Unauthorized, token required
+ *       403:
+ *         description: Access denied
  *       404:
  *         description: User not found
  */
