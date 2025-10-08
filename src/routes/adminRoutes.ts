@@ -29,7 +29,8 @@ const adminMiddleware = async (req: AuthenticatedRequest, res: Response, next: N
  * @swagger
  * /admin/users:
  *   get:
- *     summary: Get all users (admin only)
+ *     summary: Get all users
+ *     description: Retrieve a list of all users with their details, excluding passwords. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -43,6 +44,7 @@ const adminMiddleware = async (req: AuthenticatedRequest, res: Response, next: N
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
@@ -50,35 +52,80 @@ const adminMiddleware = async (req: AuthenticatedRequest, res: Response, next: N
  *                     properties:
  *                       id:
  *                         type: string
+ *                         example: "507f1f77bcf86cd799439011"
  *                       first_name:
  *                         type: string
+ *                         example: "John"
  *                       last_name:
  *                         type: string
+ *                         example: "Doe"
  *                       email:
  *                         type: string
+ *                         example: "john.doe@example.com"
  *                       country:
  *                         type: string
  *                         nullable: true
+ *                         example: "USA"
  *                       phone:
  *                         type: string
  *                         nullable: true
+ *                         example: "+1234567890"
  *                       total_balance:
  *                         type: number
+ *                         example: 1000.50
  *                       total_deposit:
  *                         type: number
+ *                         example: 500.00
  *                       total_profit:
  *                         type: number
+ *                         example: 200.00
  *                       kyc_status:
  *                         type: string
+ *                         enum: [pending, approved, rejected]
+ *                         example: "pending"
  *                       selected_trader:
  *                         type: string
  *                         nullable: true
+ *                         example: "507f1f77bcf86cd799439012"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -109,7 +156,8 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
  * @swagger
  * /admin/users/{id}:
  *   delete:
- *     summary: Delete a user (admin only)
+ *     summary: Delete a user
+ *     description: Delete a user by ID and all associated transactions. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -122,7 +170,7 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
  *         description: The user ID
  *     responses:
  *       200:
- *         description: User deleted
+ *         description: User deleted successfully
  *         content:
  *           application/json:
  *             schema:
@@ -130,16 +178,62 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 message:
  *                   type: string
+ *                   example: "User deleted successfully"
  *       404:
  *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "User not found"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -159,7 +253,8 @@ router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: Authent
  * @swagger
  * /admin/users/{id}:
  *   put:
- *     summary: Update user details (admin only)
+ *     summary: Update user details
+ *     description: Update specific user details by ID. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -179,20 +274,25 @@ router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: Authent
  *             properties:
  *               total_balance:
  *                 type: number
+ *                 example: 1000.50
  *               total_deposit:
  *                 type: number
+ *                 example: 500.00
  *               total_profit:
  *                 type: number
+ *                 example: 200.00
  *               kyc_status:
  *                 type: string
  *                 enum: [pending, approved, rejected]
+ *                 example: "approved"
  *               selected_trader:
  *                 type: string
  *                 nullable: true
+ *                 example: "507f1f77bcf86cd799439012"
  *             required: [total_balance, total_deposit, total_profit, kyc_status]
  *     responses:
  *       200:
- *         description: User updated
+ *         description: User updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -200,42 +300,98 @@ router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: Authent
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
+ *                       example: "507f1f77bcf86cd799439011"
  *                     first_name:
  *                       type: string
+ *                       example: "John"
  *                     last_name:
  *                       type: string
+ *                       example: "Doe"
  *                     email:
  *                       type: string
+ *                       example: "john.doe@example.com"
  *                     country:
  *                       type: string
  *                       nullable: true
+ *                       example: "USA"
  *                     phone:
  *                       type: string
  *                       nullable: true
+ *                       example: "+1234567890"
  *                     total_balance:
  *                       type: number
+ *                       example: 1000.50
  *                     total_deposit:
  *                       type: number
+ *                       example: 500.00
  *                     total_profit:
  *                       type: number
+ *                       example: 200.00
  *                     kyc_status:
  *                       type: string
+ *                       example: "approved"
  *                     selected_trader:
  *                       type: string
  *                       nullable: true
+ *                       example: "507f1f77bcf86cd799439012"
  *       404:
  *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "User not found"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.put("/users/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -257,7 +413,8 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
  * @swagger
  * /admin/transactions:
  *   post:
- *     summary: Create a transaction (admin only)
+ *     summary: Create a transaction
+ *     description: Create a new transaction for a user. Updates user balance for completed deposits or withdrawals. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -270,25 +427,32 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
  *             properties:
  *               userId:
  *                 type: string
+ *                 example: "507f1f77bcf86cd799439011"
  *               type:
  *                 type: string
  *                 enum: [deposit, withdraw, trade]
+ *                 example: "deposit"
  *               asset:
  *                 type: string
  *                 enum: [BTC, ETH, USDT]
+ *                 example: "BTC"
  *               amount:
  *                 type: number
+ *                 example: 0.5
  *               value:
  *                 type: number
+ *                 example: 30000
  *               fee:
  *                 type: number
+ *                 example: 10
  *               status:
  *                 type: string
  *                 enum: [pending, completed, failed]
+ *                 example: "completed"
  *             required: [userId, type, asset, amount, value, fee, status]
  *     responses:
  *       200:
- *         description: Transaction created
+ *         description: Transaction created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -296,38 +460,103 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
+ *                       example: "507f1f77bcf86cd799439013"
  *                     user:
  *                       type: string
+ *                       example: "507f1f77bcf86cd799439011"
  *                     type:
  *                       type: string
+ *                       example: "deposit"
  *                     asset:
  *                       type: string
+ *                       example: "BTC"
  *                     amount:
  *                       type: number
+ *                       example: 0.5
  *                     value:
  *                       type: number
+ *                       example: 30000
  *                     fee:
  *                       type: number
+ *                       example: 10
  *                     status:
  *                       type: string
+ *                       example: "completed"
  *                     date:
  *                       type: string
  *                       format: date-time
+ *                       example: "2025-10-08T07:38:00.000Z"
  *       400:
- *         description: Invalid request
+ *         description: Invalid request (e.g., invalid type or asset)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid type or asset"
  *       404:
  *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "User not found"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.post("/transactions", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -374,7 +603,8 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
  * @swagger
  * /admin/users/{id}/transactions:
  *   get:
- *     summary: Get transactions for a user (admin only)
+ *     summary: Get transactions for a user
+ *     description: Retrieve all transactions for a specific user, including user details (first_name, last_name). Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -395,6 +625,7 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
@@ -402,36 +633,90 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
  *                     properties:
  *                       id:
  *                         type: string
+ *                         example: "507f1f77bcf86cd799439013"
  *                       user:
  *                         type: object
  *                         properties:
  *                           first_name:
  *                             type: string
+ *                             example: "John"
  *                           last_name:
  *                             type: string
+ *                             example: "Doe"
  *                       type:
  *                         type: string
+ *                         example: "deposit"
  *                       asset:
  *                         type: string
+ *                         example: "BTC"
  *                       amount:
  *                         type: number
+ *                         example: 0.5
  *                       value:
  *                         type: number
+ *                         example: 30000
  *                       fee:
  *                         type: number
+ *                         example: 10
  *                       status:
  *                         type: string
+ *                         example: "completed"
  *                       date:
  *                         type: string
  *                         format: date-time
+ *                         example: "2025-10-08T07:38:00.000Z"
  *       404:
  *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "User not found"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -455,12 +740,342 @@ router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (re
   }
 });
 
+// ✏️ Update transaction (admin only)
+/**
+ * @swagger
+ * /admin/users/{id}/transactions/{transactionId}:
+ *   put:
+ *     summary: Update a transaction
+ *     description: Update an existing transaction for a user, reverting and reapplying balance updates as needed. Admin access required.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The transaction ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 enum: [deposit, withdraw, trade]
+ *                 example: "deposit"
+ *               asset:
+ *                 type: string
+ *                 enum: [BTC, ETH, USDT]
+ *                 example: "BTC"
+ *               amount:
+ *                 type: number
+ *                 example: 0.5
+ *               value:
+ *                 type: number
+ *                 example: 30000
+ *               fee:
+ *                 type: number
+ *                 example: 10
+ *               status:
+ *                 type: string
+ *                 enum: [pending, completed, failed]
+ *                 example: "completed"
+ *             required: [type, asset, amount, value, fee, status]
+ *     responses:
+ *       200:
+ *         description: Transaction updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "507f1f77bcf86cd799439013"
+ *                     user:
+ *                       type: string
+ *                       example: "507f1f77bcf86cd799439011"
+ *                     type:
+ *                       type: string
+ *                       example: "deposit"
+ *                     asset:
+ *                       type: string
+ *                       example: "BTC"
+ *                     amount:
+ *                       type: number
+ *                       example: 0.5
+ *                     value:
+ *                       type: number
+ *                       example: 30000
+ *                     fee:
+ *                       type: number
+ *                       example: 10
+ *                     status:
+ *                       type: string
+ *                       example: "completed"
+ *                     date:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-08T07:38:00.000Z"
+ *       400:
+ *         description: Invalid request (e.g., invalid type or asset, insufficient balance)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid type or asset"
+ *       404:
+ *         description: User or transaction not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Transaction not found"
+ *       403:
+ *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
+ */
+router.put("/users/:id/transactions/:transactionId", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { type, asset, amount, value, fee, status } = req.body;
+    if (!["deposit", "withdraw", "trade"].includes(type) || !["BTC", "ETH", "USDT"].includes(asset)) {
+      return res.status(400).json({ success: false, message: "Invalid type or asset" });
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const transaction = await Transaction.findById(req.params.transactionId);
+    if (!transaction) return res.status(404).json({ success: false, message: "Transaction not found" });
+
+    // Revert previous balance updates
+    if (transaction.type === "deposit" && transaction.status === "completed") {
+      await User.findByIdAndUpdate(req.params.id, { $inc: { total_deposit: -transaction.amount, total_balance: -transaction.amount } });
+    } else if (transaction.type === "withdraw" && transaction.status === "completed") {
+      await User.findByIdAndUpdate(req.params.id, { $inc: { total_balance: transaction.amount } });
+    }
+
+    // Update transaction
+    transaction.type = type;
+    transaction.asset = asset;
+    transaction.amount = amount;
+    transaction.value = value;
+    transaction.fee = fee;
+    transaction.status = status;
+    await transaction.save();
+
+    // Apply new balance updates
+    if (type === "deposit" && status === "completed") {
+      await User.findByIdAndUpdate(req.params.id, { $inc: { total_deposit: amount, total_balance: amount } });
+    } else if (type === "withdraw" && status === "completed") {
+      if (user.total_balance < amount) {
+        return res.status(400).json({ success: false, message: "Insufficient balance" });
+      }
+      await User.findByIdAndUpdate(req.params.id, { $inc: { total_balance: -amount } });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: transaction._id,
+        user: transaction.user,
+        type: transaction.type,
+        asset: transaction.asset,
+        amount: transaction.amount,
+        value: transaction.value,
+        fee: transaction.fee,
+        status: transaction.status,
+        date: transaction.date,
+      },
+    });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 🗑️ Delete transaction (admin only)
+/**
+ * @swagger
+ * /admin/users/{id}/transactions/{transactionId}:
+ *   delete:
+ *     summary: Delete a transaction
+ *     description: Delete a specific transaction for a user, reverting balance updates if applicable. Admin access required.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID
+ *       - in: path
+ *         name: transactionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The transaction ID
+ *     responses:
+ *       200:
+ *         description: Transaction deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Transaction deleted successfully"
+ *       404:
+ *         description: User or transaction not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Transaction not found"
+ *       403:
+ *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
+ */
+router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const transaction = await Transaction.findById(req.params.transactionId);
+    if (!transaction) return res.status(404).json({ success: false, message: "Transaction not found" });
+
+    // Revert balance updates
+    if (transaction.type === "deposit" && transaction.status === "completed") {
+      await User.findByIdAndUpdate(req.params.id, { $inc: { total_deposit: -transaction.amount, total_balance: -transaction.amount } });
+    } else if (transaction.type === "withdraw" && transaction.status === "completed") {
+      await User.findByIdAndUpdate(req.params.id, { $inc: { total_balance: transaction.amount } });
+    }
+
+    await Transaction.findByIdAndDelete(req.params.transactionId);
+    res.json({ success: true, message: "Transaction deleted successfully" });
+  } catch (error: unknown) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // 🤝 Create trader (admin only)
 /**
  * @swagger
  * /admin/traders:
  *   post:
- *     summary: Create a trader (admin only)
+ *     summary: Create a trader
+ *     description: Create a new trader with specified details. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -473,16 +1088,20 @@ router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (re
  *             properties:
  *               name:
  *                 type: string
+ *                 example: "Trader One"
  *               description:
  *                 type: string
+ *                 example: "Experienced crypto trader"
  *               performance:
  *                 type: number
+ *                 example: 0.85
  *               active:
  *                 type: boolean
+ *                 example: true
  *             required: [name]
  *     responses:
  *       200:
- *         description: Trader created
+ *         description: Trader created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -490,27 +1109,77 @@ router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (re
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
+ *                       example: "507f1f77bcf86cd799439012"
  *                     name:
  *                       type: string
+ *                       example: "Trader One"
  *                     description:
  *                       type: string
+ *                       example: "Experienced crypto trader"
  *                     performance:
  *                       type: number
+ *                       example: 0.85
  *                     active:
  *                       type: boolean
+ *                       example: true
  *       400:
  *         description: Invalid request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid request"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.post("/traders", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -527,7 +1196,8 @@ router.post("/traders", authMiddleware, adminMiddleware, async (req: Authenticat
  * @swagger
  * /admin/traders:
  *   get:
- *     summary: Get all traders (admin only)
+ *     summary: Get all traders
+ *     description: Retrieve a list of all traders. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -541,6 +1211,7 @@ router.post("/traders", authMiddleware, adminMiddleware, async (req: Authenticat
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
@@ -548,20 +1219,58 @@ router.post("/traders", authMiddleware, adminMiddleware, async (req: Authenticat
  *                     properties:
  *                       id:
  *                         type: string
+ *                         example: "507f1f77bcf86cd799439012"
  *                       name:
  *                         type: string
+ *                         example: "Trader One"
  *                       description:
  *                         type: string
+ *                         example: "Experienced crypto trader"
  *                       performance:
  *                         type: number
+ *                         example: 0.85
  *                       active:
  *                         type: boolean
+ *                         example: true
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.get("/traders", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -577,7 +1286,8 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  * @swagger
  * /admin/users/{id}/assign-trader:
  *   put:
- *     summary: Assign a trader to a user (admin only)
+ *     summary: Assign a trader to a user
+ *     description: Assign or update a trader for a specific user. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -598,10 +1308,11 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  *               traderId:
  *                 type: string
  *                 nullable: true
+ *                 example: "507f1f77bcf86cd799439012"
  *             required: [traderId]
  *     responses:
  *       200:
- *         description: Trader assigned
+ *         description: Trader assigned successfully
  *         content:
  *           application/json:
  *             schema:
@@ -609,42 +1320,98 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
+ *                       example: "507f1f77bcf86cd799439011"
  *                     first_name:
  *                       type: string
+ *                       example: "John"
  *                     last_name:
  *                       type: string
+ *                       example: "Doe"
  *                     email:
  *                       type: string
+ *                       example: "john.doe@example.com"
  *                     country:
  *                       type: string
  *                       nullable: true
+ *                       example: "USA"
  *                     phone:
  *                       type: string
  *                       nullable: true
+ *                       example: "+1234567890"
  *                     total_balance:
  *                       type: number
+ *                       example: 1000.50
  *                     total_deposit:
  *                       type: number
+ *                       example: 500.00
  *                     total_profit:
  *                       type: number
+ *                       example: 200.00
  *                     kyc_status:
  *                       type: string
+ *                       example: "approved"
  *                     selected_trader:
  *                       type: string
  *                       nullable: true
+ *                       example: "507f1f77bcf86cd799439012"
  *       404:
  *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "User not found"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -662,7 +1429,8 @@ router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (r
  * @swagger
  * /admin/wallet-addresses:
  *   post:
- *     summary: Create or update a deposit address (admin only)
+ *     summary: Create or update a deposit address
+ *     description: Create a new deposit address or update an existing one for a specific currency. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -676,14 +1444,17 @@ router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (r
  *               currency:
  *                 type: string
  *                 enum: [BTC, ETH, USDT]
+ *                 example: "BTC"
  *               network:
  *                 type: string
+ *                 example: "Bitcoin Mainnet"
  *               address:
  *                 type: string
+ *                 example: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
  *             required: [currency, network, address]
  *     responses:
  *       200:
- *         description: Address created or updated
+ *         description: Address created or updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -691,25 +1462,74 @@ router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (r
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: string
+ *                       example: "507f1f77bcf86cd799439014"
  *                     currency:
  *                       type: string
+ *                       example: "BTC"
  *                     network:
  *                       type: string
+ *                       example: "Bitcoin Mainnet"
  *                     address:
  *                       type: string
+ *                       example: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
  *       400:
- *         description: Invalid request
+ *         description: Invalid request (e.g., invalid currency, network, or address)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid currency, network, or address"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.post("/wallet-addresses", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -741,7 +1561,8 @@ router.post("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Au
  * @swagger
  * /admin/wallet-addresses:
  *   get:
- *     summary: Get all deposit addresses (admin only)
+ *     summary: Get all deposit addresses
+ *     description: Retrieve a list of all deposit addresses for supported currencies. Admin access required.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -755,6 +1576,7 @@ router.post("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Au
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
@@ -762,18 +1584,55 @@ router.post("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Au
  *                     properties:
  *                       id:
  *                         type: string
+ *                         example: "507f1f77bcf86cd799439014"
  *                       currency:
  *                         type: string
+ *                         example: "BTC"
  *                       network:
  *                         type: string
+ *                         example: "Bitcoin Mainnet"
  *                       address:
  *                         type: string
+ *                         example: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
  *       403:
  *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
  */
 router.get("/wallet-addresses", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
