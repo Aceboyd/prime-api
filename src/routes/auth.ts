@@ -177,6 +177,65 @@ router.post("/admin/login", loginAdmin);
 
 /**
  * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Log out user or admin
+ *     description: Logs out the authenticated user or admin, instructing the client to clear the JWT token from storage. Requires authentication.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully
+ *       401:
+ *         description: Unauthorized, token required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Invalid token
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Server error
+ */
+router.post("/logout", authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // JWT is stateless; client should clear token from storage
+    res.json({ success: true, message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * @swagger
  * /auth/profile:
  *   get:
  *     summary: Get authenticated user profile
