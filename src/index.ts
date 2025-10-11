@@ -2,7 +2,7 @@ import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
 import connectDB from "./db/index";
 import authRouter from "./routes/auth";
-import adminRouter from "./routes/adminRoutes"; // Import admin routes
+import adminRouter from "./routes/adminRoutes";
 import cors from "cors";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
@@ -14,16 +14,32 @@ connectDB();
 
 const app: Express = express();
 
-// 📦 Enable CORS with frontend URL from environment
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true,
-}));
+// 📦 Enable CORS with multiple origins
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "https://primecrypto.netlify.app",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g., mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"), false);
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 // 🛤️ Mount routes
 app.use("/auth", authRouter);
-app.use("/admin", adminRouter); // Mount admin routes
+app.use("/admin", adminRouter);
 
 // 🏠 Health check endpoint
 app.get("/", (req: Request, res: Response) => {
@@ -55,7 +71,7 @@ const swaggerOptions = {
       },
     },
   },
-  apis: ["./dist/routes/*.js"], // Adjust if needed for TypeScript
+  apis: ["./dist/routes/*.js"],
 };
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
