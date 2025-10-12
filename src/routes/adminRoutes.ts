@@ -19,7 +19,7 @@ const adminMiddleware = async (req: AuthenticatedRequest, res: Response, next: N
       return res.status(403).json({ success: false, message: "Admin access required" });
     }
     next();
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
@@ -146,7 +146,7 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
         selected_trader: user.selected_trader || null
       }))
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -243,7 +243,7 @@ router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: Authent
     }
     await Transaction.deleteMany({ user: req.params.id });
     res.json({ success: true, message: "User deleted successfully" });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -340,6 +340,19 @@ router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: Authent
  *                       type: string
  *                       nullable: true
  *                       example: "507f1f77bcf86cd799439012"
+ *       400:
+ *         description: Invalid trader ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid or inactive trader"
  *       404:
  *         description: User not found
  *         content:
@@ -396,6 +409,12 @@ router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: Authent
 router.put("/users/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { total_balance, total_deposit, total_profit, kyc_status, selected_trader } = req.body;
+    if (selected_trader) {
+      const trader = await Trader.findById(selected_trader);
+      if (!trader || !trader.active) {
+        return res.status(400).json({ success: false, message: "Invalid or inactive trader" });
+      }
+    }
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { total_balance, total_deposit, total_profit, kyc_status, selected_trader },
@@ -403,7 +422,7 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
     ).select("-password");
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.json({ success: true, data: user });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -593,7 +612,7 @@ router.post("/transactions", authMiddleware, adminMiddleware, async (req: Authen
         date: transaction.date,
       },
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -735,7 +754,7 @@ router.get("/users/:id/transactions", authMiddleware, adminMiddleware, async (re
         date: t.date,
       })),
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -912,14 +931,12 @@ router.put("/users/:id/transactions/:transactionId", authMiddleware, adminMiddle
     const transaction = await Transaction.findById(req.params.transactionId);
     if (!transaction) return res.status(404).json({ success: false, message: "Transaction not found" });
 
-    // Revert previous balance updates
     if (transaction.type === "deposit" && transaction.status === "completed") {
       await User.findByIdAndUpdate(req.params.id, { $inc: { total_deposit: -transaction.amount, total_balance: -transaction.amount } });
     } else if (transaction.type === "withdraw" && transaction.status === "completed") {
       await User.findByIdAndUpdate(req.params.id, { $inc: { total_balance: transaction.amount } });
     }
 
-    // Update transaction
     transaction.type = type;
     transaction.asset = asset;
     transaction.amount = amount;
@@ -928,7 +945,6 @@ router.put("/users/:id/transactions/:transactionId", authMiddleware, adminMiddle
     transaction.status = status;
     await transaction.save();
 
-    // Apply new balance updates
     if (type === "deposit" && status === "completed") {
       await User.findByIdAndUpdate(req.params.id, { $inc: { total_deposit: amount, total_balance: amount } });
     } else if (type === "withdraw" && status === "completed") {
@@ -952,7 +968,7 @@ router.put("/users/:id/transactions/:transactionId", authMiddleware, adminMiddle
         date: transaction.date,
       },
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1055,7 +1071,6 @@ router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMid
     const transaction = await Transaction.findById(req.params.transactionId);
     if (!transaction) return res.status(404).json({ success: false, message: "Transaction not found" });
 
-    // Revert balance updates
     if (transaction.type === "deposit" && transaction.status === "completed") {
       await User.findByIdAndUpdate(req.params.id, { $inc: { total_deposit: -transaction.amount, total_balance: -transaction.amount } });
     } else if (transaction.type === "withdraw" && transaction.status === "completed") {
@@ -1064,7 +1079,7 @@ router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMid
 
     await Transaction.findByIdAndDelete(req.params.transactionId);
     res.json({ success: true, message: "Transaction deleted successfully" });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1095,6 +1110,9 @@ router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMid
  *               performance:
  *                 type: number
  *                 example: 0.85
+ *               numberOfTrades:
+ *                 type: number
+ *                 example: 100
  *               active:
  *                 type: boolean
  *                 example: true
@@ -1125,11 +1143,22 @@ router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMid
  *                     performance:
  *                       type: number
  *                       example: 0.85
+ *                     numberOfTrades:
+ *                       type: number
+ *                       example: 100
  *                     active:
  *                       type: boolean
  *                       example: true
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-08T07:38:00.000Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-08T07:38:00.000Z"
  *       400:
- *         description: Invalid request
+ *         description: Invalid request (e.g., missing name or invalid performance)
  *         content:
  *           application/json:
  *             schema:
@@ -1140,7 +1169,7 @@ router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMid
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: "Invalid request"
+ *                   example: "Name is required"
  *       403:
  *         description: Forbidden (not admin)
  *         content:
@@ -1183,10 +1212,23 @@ router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMid
  */
 router.post("/traders", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const trader = new Trader(req.body);
+    const { name, description, performance, numberOfTrades, active } = req.body;
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Name is required" });
+    }
+    if (performance && (typeof performance !== "number" || performance < 0)) {
+      return res.status(400).json({ success: false, message: "Performance must be a non-negative number" });
+    }
+    if (numberOfTrades && (typeof numberOfTrades !== "number" || numberOfTrades < 0)) {
+      return res.status(400).json({ success: false, message: "Number of trades must be a non-negative number" });
+    }
+    const trader = new Trader({ name, description, performance: performance || 0, numberOfTrades: numberOfTrades || 0, active: active !== undefined ? active : true });
     await trader.save();
     res.json({ success: true, data: trader });
-  } catch (error: unknown) {
+  } catch (error: any) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1229,9 +1271,20 @@ router.post("/traders", authMiddleware, adminMiddleware, async (req: Authenticat
  *                       performance:
  *                         type: number
  *                         example: 0.85
+ *                       numberOfTrades:
+ *                         type: number
+ *                         example: 100
  *                       active:
  *                         type: boolean
  *                         example: true
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-10-08T07:38:00.000Z"
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-10-08T07:38:00.000Z"
  *       403:
  *         description: Forbidden (not admin)
  *         content:
@@ -1276,7 +1329,275 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
   try {
     const traders = await Trader.find();
     res.json({ success: true, data: traders });
-  } catch (error: unknown) {
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// ✏️ Update trader (admin only)
+/**
+ * @swagger
+ * /admin/traders/{id}:
+ *   put:
+ *     summary: Update a trader
+ *     description: Update an existing trader's details by ID. Admin access required.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The trader ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Trader One"
+ *               description:
+ *                 type: string
+ *                 example: "Experienced crypto trader"
+ *               performance:
+ *                 type: number
+ *                 example: 0.85
+ *               numberOfTrades:
+ *                 type: number
+ *                 example: 100
+ *               active:
+ *                 type: boolean
+ *                 example: true
+ *             required: [name]
+ *     responses:
+ *       200:
+ *         description: Trader updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "507f1f77bcf86cd799439012"
+ *                     name:
+ *                       type: string
+ *                       example: "Trader One"
+ *                     description:
+ *                       type: string
+ *                       example: "Experienced crypto trader"
+ *                     performance:
+ *                       type: number
+ *                       example: 0.85
+ *                     numberOfTrades:
+ *                       type: number
+ *                       example: 100
+ *                     active:
+ *                       type: boolean
+ *                       example: true
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-08T07:38:00.000Z"
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2025-10-08T07:38:00.000Z"
+ *       400:
+ *         description: Invalid request (e.g., missing name or invalid performance)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Name is required"
+ *       404:
+ *         description: Trader not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Trader not found"
+ *       403:
+ *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
+ */
+router.put("/traders/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { name, description, performance, numberOfTrades, active } = req.body;
+    if (!name) {
+      return res.status(400).json({ success: false, message: "Name is required" });
+    }
+    if (performance && (typeof performance !== "number" || performance < 0)) {
+      return res.status(400).json({ success: false, message: "Performance must be a non-negative number" });
+    }
+    if (numberOfTrades && (typeof numberOfTrades !== "number" || numberOfTrades < 0)) {
+      return res.status(400).json({ success: false, message: "Number of trades must be a non-negative number" });
+    }
+    const trader = await Trader.findByIdAndUpdate(
+      req.params.id,
+      { name, description, performance, numberOfTrades, active },
+      { new: true }
+    );
+    if (!trader) return res.status(404).json({ success: false, message: "Trader not found" });
+    res.json({ success: true, data: trader });
+  } catch (error: any) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 🗑️ Delete trader (admin only)
+/**
+ * @swagger
+ * /admin/traders/{id}:
+ *   delete:
+ *     summary: Delete a trader
+ *     description: Delete a specific trader by ID and remove their assignment from users. Admin access required.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The trader ID
+ *     responses:
+ *       200:
+ *         description: Trader deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Trader deleted successfully"
+ *       404:
+ *         description: Trader not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Trader not found"
+ *       403:
+ *         description: Forbidden (not admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Admin access required"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
+ */
+router.delete("/traders/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const trader = await Trader.findByIdAndDelete(req.params.id);
+    if (!trader) return res.status(404).json({ success: false, message: "Trader not found" });
+    await User.updateMany({ selected_trader: req.params.id }, { $set: { selected_trader: null } });
+    res.json({ success: true, message: "Trader deleted successfully" });
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1360,6 +1681,19 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  *                       type: string
  *                       nullable: true
  *                       example: "507f1f77bcf86cd799439012"
+ *       400:
+ *         description: Invalid trader ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid or inactive trader"
  *       404:
  *         description: User not found
  *         content:
@@ -1416,10 +1750,249 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
 router.put("/users/:id/assign-trader", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { traderId } = req.body;
+    if (traderId) {
+      const trader = await Trader.findById(traderId);
+      if (!trader || !trader.active) {
+        return res.status(400).json({ success: false, message: "Invalid or inactive trader" });
+      }
+    }
     const user = await User.findByIdAndUpdate(req.params.id, { selected_trader: traderId }, { new: true }).select("-password");
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
     res.json({ success: true, data: user });
-  } catch (error: unknown) {
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 📋 Get all traders (user-accessible)
+/**
+ * @swagger
+ * /traders:
+ *   get:
+ *     summary: Get all active traders
+ *     description: Retrieve a list of all active traders. Accessible to authenticated users.
+ *     tags: [Traders]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of active traders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "507f1f77bcf86cd799439012"
+ *                       name:
+ *                         type: string
+ *                         example: "Trader One"
+ *                       description:
+ *                         type: string
+ *                         example: "Experienced crypto trader"
+ *                       performance:
+ *                         type: number
+ *                         example: 0.85
+ *                       numberOfTrades:
+ *                         type: number
+ *                         example: 100
+ *                       active:
+ *                         type: boolean
+ *                         example: true
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-10-08T07:38:00.000Z"
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2025-10-08T07:38:00.000Z"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
+ */
+router.get("/traders", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const traders = await Trader.find({ active: true });
+    res.json({ success: true, data: traders });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 🤝 User select trader
+/**
+ * @swagger
+ * /user/select-trader:
+ *   put:
+ *     summary: Select a trader
+ *     description: Assign or update a trader for the authenticated user.
+ *     tags: [Traders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               traderId:
+ *                 type: string
+ *                 nullable: true
+ *                 example: "507f1f77bcf86cd799439012"
+ *             required: [traderId]
+ *     responses:
+ *       200:
+ *         description: Trader selected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "507f1f77bcf86cd799439011"
+ *                     first_name:
+ *                       type: string
+ *                       example: "John"
+ *                     last_name:
+ *                       type: string
+ *                       example: "Doe"
+ *                     email:
+ *                       type: string
+ *                       example: "john.doe@example.com"
+ *                     country:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "USA"
+ *                     phone:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "+1234567890"
+ *                     total_balance:
+ *                       type: number
+ *                       example: 1000.50
+ *                     total_deposit:
+ *                       type: number
+ *                       example: 500.00
+ *                     total_profit:
+ *                       type: number
+ *                       example: 200.00
+ *                     kyc_status:
+ *                       type: string
+ *                       example: "approved"
+ *                     selected_trader:
+ *                       type: string
+ *                       nullable: true
+ *                       example: "507f1f77bcf86cd799439012"
+ *       400:
+ *         description: Invalid trader ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid or inactive trader"
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "User not found"
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Invalid token"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Server error"
+ */
+router.put("/user/select-trader", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized: No user found in request" });
+    }
+    const { traderId } = req.body;
+    if (traderId) {
+      const trader = await Trader.findById(traderId);
+      if (!trader || !trader.active) {
+        return res.status(400).json({ success: false, message: "Invalid or inactive trader" });
+      }
+    }
+    const user = await User.findByIdAndUpdate(req.user.id, { selected_trader: traderId }, { new: true }).select("-password");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, data: user });
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1551,7 +2124,7 @@ router.post("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Au
         address: walletAddress.address,
       },
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1646,7 +2219,7 @@ router.get("/wallet-addresses", authMiddleware, adminMiddleware, async (req: Aut
         address: a.address,
       })),
     });
-  } catch (error: unknown) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
