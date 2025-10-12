@@ -170,11 +170,11 @@ router.post("/login", loginUser);
  *               email:
  *                 type: string
  *                 format: email
- *                 example: admin@example.com
+ *                 example: gideonj666@gmail.com
  *               password:
  *                 type: string
  *                 minLength: 6
- *                 example: AdminSecure123!
+ *                 example: amorgrace35
  *             required:
  *               - email
  *               - password
@@ -239,6 +239,12 @@ router.post("/admin/login", async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "Email and password are required" });
     }
 
+    // Check JWT_SECRET
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not defined");
+      return res.status(500).json({ success: false, message: "Server configuration error" });
+    }
+
     // Find user
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
@@ -251,7 +257,7 @@ router.post("/admin/login", async (req: Request, res: Response) => {
     }
 
     // Verify password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user.password || "");
     if (!isMatch) {
       return res.status(400).json({ success: false, message: "Invalid email or password" });
     }
@@ -259,7 +265,7 @@ router.post("/admin/login", async (req: Request, res: Response) => {
     // Generate JWT
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET as string,
+      process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
@@ -284,7 +290,7 @@ router.post("/admin/login", async (req: Request, res: Response) => {
       token,
     });
   } catch (error: any) {
-    console.error("Admin login error:", error);
+    console.error("Admin login error:", error.message, error.stack);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -757,7 +763,7 @@ router.get("/wallet-addresses", authMiddleware, async (req: Request, res: Respon
     const addresses = await WalletAddress.find().select("currency network address");
     res.json({ success: true, data: addresses });
   } catch (error: any) {
-    console.error("Get wallet addresses error:", error);
+    console.error("Get wallet addresses error:", error.message, error.stack);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -868,7 +874,7 @@ router.post("/deposit", authMiddleware, async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("Deposit error:", error);
+    console.error("Deposit error:", error.message, error.stack);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -934,7 +940,7 @@ router.get("/transactions", authMiddleware, async (req: Request, res: Response) 
       })),
     });
   } catch (error: any) {
-    console.error("Get transactions error:", error);
+    console.error("Get transactions error:", error.message, error.stack);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -996,7 +1002,7 @@ router.get("/transactions", authMiddleware, async (req: Request, res: Response) 
  *           example: true
  *         message:
  *           type: string
- *           example: User registered successfully
+ *           example: Operation successful
  *         data:
  *           $ref: '#/components/schemas/User'
  *         token:
