@@ -17,23 +17,28 @@ const app: Express = express();
 // 📦 Enable CORS with multiple origins
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
-  "https://primecrypto.netlify.app",
+  "https://primecrypto.netlify.app",             // your frontend (Netlify)
+  "https://prime-api-gm2o.onrender.com",         // your backend (Render, for Swagger)
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g., mobile apps or curl requests)
+      // ✅ Allow requests with no origin (like Swagger or Postman)
       if (!origin) return callback(null, true);
+
+      // ✅ Allow listed origins
       if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+        callback(null, true);
       } else {
-        return callback(new Error("Not allowed by CORS"), false);
+        console.log("🚫 CORS blocked origin:", origin);
+        callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
   })
 );
+
 
 app.use(express.json());
 
