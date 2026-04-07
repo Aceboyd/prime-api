@@ -284,6 +284,8 @@ router.post("/admin/login", async (req: Request, res: Response) => {
         total_balance: user.total_balance || 0,
         total_deposit: user.total_deposit || 0,
         total_profit: user.total_profit || 0,
+        bonus: user.bonus || 0,
+        total_withdrawal: user.total_withdrawal || 0,
         kyc_status: user.kyc_status || "pending",
         selected_trader: user.selected_trader || null,
       },
@@ -986,6 +988,12 @@ router.get("/transactions", authMiddleware, async (req: Request, res: Response) 
  *         total_profit:
  *           type: number
  *           example: 200
+ *         bonus:
+ *           type: number
+ *           example: 50
+ *         total_withdrawal:
+ *           type: number
+ *           example: 100
  *         kyc_status:
  *           type: string
  *           enum: [pending, approved, rejected]

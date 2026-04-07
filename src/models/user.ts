@@ -12,6 +12,8 @@ export interface UserDocument extends Document {
   total_balance: number;
   total_deposit: number;
   total_profit: number;
+  bonus: number;
+  total_withdrawal: number;
   kyc_status: "pending" | "approved" | "rejected";
   selected_trader: Schema.Types.ObjectId | null;
   createdAt: Date;
@@ -32,6 +34,8 @@ const userSchema = new Schema<UserDocument>(
     total_balance: { type: Number, default: 0 },
     total_deposit: { type: Number, default: 0 },
     total_profit: { type: Number, default: 0 },
+    bonus: { type: Number, default: 0 },
+    total_withdrawal: { type: Number, default: 0 },
     kyc_status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     selected_trader: { type: Schema.Types.ObjectId, ref: "Trader", default: null },
   },

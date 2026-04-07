@@ -142,6 +142,8 @@ router.get("/users", authMiddleware, adminMiddleware, async (req: AuthenticatedR
         total_balance: user.total_balance || 0,
         total_deposit: user.total_deposit || 0,
         total_profit: user.total_profit || 0,
+        bonus: user.bonus || 0,
+        total_withdrawal: user.total_withdrawal || 0,
         kyc_status: user.kyc_status || 'pending',
         selected_trader: user.selected_trader || null
       }))
@@ -408,7 +410,7 @@ router.delete("/users/:id", authMiddleware, adminMiddleware, async (req: Authent
  */
 router.put("/users/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { total_balance, total_deposit, total_profit, kyc_status, selected_trader } = req.body;
+    const { total_balance, total_deposit, total_profit, bonus, total_withdrawal, kyc_status, selected_trader } = req.body;
     if (selected_trader) {
       const trader = await Trader.findById(selected_trader);
       if (!trader || !trader.active) {
@@ -417,7 +419,7 @@ router.put("/users/:id", authMiddleware, adminMiddleware, async (req: Authentica
     }
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { total_balance, total_deposit, total_profit, kyc_status, selected_trader },
+      { total_balance, total_deposit, total_profit, bonus, total_withdrawal, kyc_status, selected_trader },
       { new: true }
     ).select("-password");
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
