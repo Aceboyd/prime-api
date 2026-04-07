@@ -6,6 +6,7 @@ import adminRouter from "./routes/adminRoutes";
 import cors from "cors";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
+import path from "path";
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use(
 
 
 app.use(express.json());
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // 🛤️ Mount routes
 app.use("/auth", authRouter);

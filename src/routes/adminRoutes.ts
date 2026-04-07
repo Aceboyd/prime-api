@@ -4,8 +4,31 @@ import Transaction from "../models/Transaction";
 import Trader from "../models/Trader";
 import WalletAddress from "../models/WalletAddress";
 import { authMiddleware } from "../middleware/authMiddleware";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const router = Router();
+
+const uploadsDir = path.join(process.cwd(), "uploads", "traders");
+fs.mkdirSync(uploadsDir, { recursive: true });
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadsDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const safeName = `trader-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+      cb(null, safeName);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files are allowed"));
+    }
+    cb(null, true);
+  },
+});
 
 // Admin middleware
 interface AuthenticatedRequest extends Request {
@@ -1214,7 +1237,23 @@ router.delete("/users/:id/transactions/:transactionId", authMiddleware, adminMid
  */
 router.post("/traders", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { name, description, performance, numberOfTrades, active } = req.body;
+    const {
+      name,
+      description,
+      performance,
+      numberOfTrades,
+      followers,
+      risk,
+      roi,
+      win_rate,
+      trades,
+      min_invest,
+      max_invest,
+      duration,
+      slots,
+      image_url,
+      active,
+    } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, message: "Name is required" });
     }
@@ -1224,13 +1263,42 @@ router.post("/traders", authMiddleware, adminMiddleware, async (req: Authenticat
     if (numberOfTrades && (typeof numberOfTrades !== "number" || numberOfTrades < 0)) {
       return res.status(400).json({ success: false, message: "Number of trades must be a non-negative number" });
     }
-    const trader = new Trader({ name, description, performance: performance || 0, numberOfTrades: numberOfTrades || 0, active: active !== undefined ? active : true });
+    const trader = new Trader({
+      name,
+      description,
+      performance: performance || 0,
+      numberOfTrades: numberOfTrades || 0,
+      followers: followers || 0,
+      risk: risk || "Low",
+      roi: roi || 0,
+      win_rate: win_rate || 0,
+      trades: trades || 0,
+      min_invest: min_invest || 0,
+      max_invest: max_invest || 0,
+      duration: duration || "1 Day",
+      slots: slots || 0,
+      image_url: image_url || "",
+      active: active !== undefined ? active : true,
+    });
     await trader.save();
     res.json({ success: true, data: trader });
   } catch (error: any) {
     if (error.name === "ValidationError") {
       return res.status(400).json({ success: false, message: error.message });
     }
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// 🖼️ Upload trader image (admin only)
+router.post("/traders/upload", authMiddleware, adminMiddleware, upload.single("image"), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No image uploaded" });
+    }
+    const url = `${req.protocol}://${req.get("host")}/uploads/traders/${req.file.filename}`;
+    res.json({ success: true, data: { url, filename: req.file.filename } });
+  } catch (error: any) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1484,7 +1552,23 @@ router.get("/traders", authMiddleware, adminMiddleware, async (req: Authenticate
  */
 router.put("/traders/:id", authMiddleware, adminMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { name, description, performance, numberOfTrades, active } = req.body;
+    const {
+      name,
+      description,
+      performance,
+      numberOfTrades,
+      followers,
+      risk,
+      roi,
+      win_rate,
+      trades,
+      min_invest,
+      max_invest,
+      duration,
+      slots,
+      image_url,
+      active,
+    } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, message: "Name is required" });
     }
@@ -1496,7 +1580,23 @@ router.put("/traders/:id", authMiddleware, adminMiddleware, async (req: Authenti
     }
     const trader = await Trader.findByIdAndUpdate(
       req.params.id,
-      { name, description, performance, numberOfTrades, active },
+      {
+        name,
+        description,
+        performance,
+        numberOfTrades,
+        followers,
+        risk,
+        roi,
+        win_rate,
+        trades,
+        min_invest,
+        max_invest,
+        duration,
+        slots,
+        image_url,
+        active,
+      },
       { new: true }
     );
     if (!trader) return res.status(404).json({ success: false, message: "Trader not found" });
